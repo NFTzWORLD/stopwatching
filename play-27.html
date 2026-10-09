@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StopWatching #27 — PIXEL</title>
+<style>
+  :root {
+    --case: #2c3034;
+    --face: #0c120c;
+    --ink: #b6ff6a;
+    --glow: #62c030;
+    --rim: #1c2024;
+    --key: #22262a;
+    --keyink: #e8ffc8;
+    --on: #f4efe6;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    min-height: 100%;
+    overflow: auto;
+    background:
+      radial-gradient(900px 420px at 50% -10%, rgba(255,255,255,.05), transparent 60%),
+      #14120f;
+    color: #f4efe6;
+    font: 16px/1.4 Verdana, Geneva, sans-serif;
+    display: flex;
+    align-items: safe center;
+    justify-content: center;
+    padding: 12px;
+  }
+  .slab {
+    width: min(420px, 100%);
+    min-width: 0;
+    background:
+      linear-gradient(165deg, rgba(255,255,255,.34), transparent 38%),
+      var(--case);
+    border: 1px solid var(--rim);
+    border-radius: 28px;
+    box-shadow: 0 22px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.35);
+    padding: 14px 12px 12px;
+    user-select: none;
+  }
+  .slab.flap, .slab.lcd { border-radius: 18px; }
+  .slab.oled, .slab.nixie { border-radius: 36px; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 2px 10px; min-width: 0; }
+  .brand, .who { margin: 0; color: #1a120c; background: rgba(255,255,255,.72); border-radius: 999px; padding: 4px 8px; }
+  .brand { letter-spacing: .14em; font-size: 11px; }
+  .who { font-size: 12px; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .well {
+    position: relative;
+    background:
+      radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.08), transparent 46%),
+      var(--face);
+    border-radius: 18px;
+    padding: 12px 12px 10px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 12px 30px rgba(0,0,0,.35);
+  }
+  .vfd .well::after, .tube .well::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0,0,0,.14) 2px 3px);
+  }
+  .bezel { width: min(100%, 250px); margin: 0 auto; position: relative; }
+  svg { width: 100%; height: auto; display: block; color: var(--ink); }
+  .read {
+    position: absolute;
+    inset: 18%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: radial-gradient(circle at 50% 46%, var(--face) 0 62%, transparent 78%);
+  }
+  .lamp { display: flex; justify-content: space-between; width: 100%; color: var(--ink); opacity: .8; font-size: 11px; letter-spacing: .12em; }
+  .lamp b { font-weight: 700; }
+  .run .lamp b { text-shadow: 0 0 8px var(--glow); }
+  .time {
+    margin: 2px 0 0;
+    color: var(--ink);
+    font: 700 clamp(28px, 8vw, 40px)/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .time.long { font-size: clamp(18px, 5.2vw, 26px); letter-spacing: 0; }
+  .time.joke { font-size: clamp(15px, 4.4vw, 20px); letter-spacing: .16em; line-height: 1.15; white-space: pre-line; }
+  .vfd .time, .tube .time { text-shadow: 0 0 10px var(--glow), 0 0 22px var(--glow); }
+  .oled .time { text-shadow: 0 0 8px var(--glow); font-weight: 500; }
+  .nixie .time { text-shadow: 0 0 12px var(--glow), 0 0 2px var(--ink); letter-spacing: .12em; font-weight: 500; }
+  .lcd .time { text-shadow: none; }
+  .seg .time { font-weight: 800; letter-spacing: .06em; text-shadow: 0 0 6px var(--glow); }
+  .flap .time {
+    background-image: linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.4));
+    background-size: 100% 1px;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .lapnow { margin: 4px 0 0; color: var(--ink); opacity: .78; font: 12px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .08em; }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
+  button {
+    font: 15px/1 Verdana, sans-serif;
+    min-height: 48px;
+    border-radius: 12px;
+    border: 0;
+    cursor: pointer;
+    padding: 0 10px;
+    touch-action: manipulation;
+  }
+  button.go, button.side {
+    flex: 1 1 0;
+    background: var(--key);
+    color: var(--keyink);
+  }
+  button.go { background: var(--ink); color: var(--face); font-weight: 700; }
+  button:disabled { opacity: .38; cursor: default; }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid #f85800; outline-offset: 2px; }
+  .tapehead, .laps li {
+    display: grid;
+    grid-template-columns: 2.2rem 1fr 1fr 3rem;
+    gap: 6px;
+    align-items: center;
+  }
+  .tapehead { margin: 12px 2px 4px; color: var(--on); font-size: 10px; letter-spacing: .14em; opacity: .72; }
+  .laps { list-style: none; margin: 0; padding: 0; max-height: 132px; overflow: auto; }
+  .laps li {
+    background: rgba(0,0,0,.18);
+    color: var(--ink);
+    border-radius: 8px;
+    margin: 0 0 4px;
+    padding: 6px 8px;
+    font: 13px/1 ui-monospace, Menlo, Consolas, monospace;
+  }
+  .laps li.best { box-shadow: inset 3px 0 0 var(--glow); }
+  .laps em { font-style: normal; font-size: 10px; letter-spacing: .08em; }
+  .laps .muted { opacity: .55; display: block; }
+  .hint { margin: 8px 2px 0; color: var(--on); font-size: 11px; letter-spacing: .08em; opacity: .78; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  @media (prefers-reduced-motion: reduce) {
+    .run .lamp b { text-shadow: none; }
+  }
+  @media (max-width: 420px) {
+    .bezel { width: min(100%, 210px); }
+    .brand { letter-spacing: .08em; }
+  }
+</style>
+</head>
+<body>
+  <main class="slab lcd" id="slab">
+    <header>
+      <p class="brand">STOPWATCHING</p>
+      <p class="who">PIXEL · 27</p>
+    </header>
+    <section class="well">
+      <div class="bezel">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="97" fill="none" stroke="currentColor" stroke-opacity=".28" stroke-width="2"/>
+          <circle cx="100" cy="100" r="74" fill="none" stroke="currentColor" stroke-opacity=".18" stroke-width="1"/>
+          <line x1="100.00" y1="22.00" x2="100.00" y2="4.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="109.20" y1="12.48" x2="110.03" y2="4.53" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="118.30" y1="13.92" x2="119.96" y2="6.10" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="127.19" y1="16.31" x2="129.67" y2="8.70" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="135.79" y1="19.61" x2="139.05" y2="12.30" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="139.00" y1="32.45" x2="148.00" y2="16.86" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="151.73" y1="28.81" x2="156.43" y2="22.33" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="158.88" y1="34.60" x2="164.24" y2="28.66" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="165.40" y1="41.12" x2="171.34" y2="35.76" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="171.19" y1="48.27" x2="177.67" y2="43.57" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="167.55" y1="61.00" x2="183.14" y2="52.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="180.39" y1="64.21" x2="187.70" y2="60.95" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="183.69" y1="72.81" x2="191.30" y2="70.33" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="186.08" y1="81.70" x2="193.90" y2="80.04" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="187.52" y1="90.80" x2="195.47" y2="89.97" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="178.00" y1="100.00" x2="196.00" y2="100.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="187.52" y1="109.20" x2="195.47" y2="110.03" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="186.08" y1="118.30" x2="193.90" y2="119.96" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="183.69" y1="127.19" x2="191.30" y2="129.67" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="180.39" y1="135.79" x2="187.70" y2="139.05" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="167.55" y1="139.00" x2="183.14" y2="148.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="171.19" y1="151.73" x2="177.67" y2="156.43" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="165.40" y1="158.88" x2="171.34" y2="164.24" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="158.88" y1="165.40" x2="164.24" y2="171.34" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="151.73" y1="171.19" x2="156.43" y2="177.67" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="139.00" y1="167.55" x2="148.00" y2="183.14" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="135.79" y1="180.39" x2="139.05" y2="187.70" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="127.19" y1="183.69" x2="129.67" y2="191.30" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="118.30" y1="186.08" x2="119.96" y2="193.90" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="109.20" y1="187.52" x2="110.03" y2="195.47" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="100.00" y1="178.00" x2="100.00" y2="196.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="90.80" y1="187.52" x2="89.97" y2="195.47" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="81.70" y1="186.08" x2="80.04" y2="193.90" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="72.81" y1="183.69" x2="70.33" y2="191.30" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="64.21" y1="180.39" x2="60.95" y2="187.70" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="61.00" y1="167.55" x2="52.00" y2="183.14" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="48.27" y1="171.19" x2="43.57" y2="177.67" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="41.12" y1="165.40" x2="35.76" y2="171.34" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="34.60" y1="158.88" x2="28.66" y2="164.24" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="28.81" y1="151.73" x2="22.33" y2="156.43" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="32.45" y1="139.00" x2="16.86" y2="148.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="19.61" y1="135.79" x2="12.30" y2="139.05" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="16.31" y1="127.19" x2="8.70" y2="129.67" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="13.92" y1="118.30" x2="6.10" y2="119.96" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="12.48" y1="109.20" x2="4.53" y2="110.03" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="22.00" y1="100.00" x2="4.00" y2="100.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="12.48" y1="90.80" x2="4.53" y2="89.97" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="13.92" y1="81.70" x2="6.10" y2="80.04" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="16.31" y1="72.81" x2="8.70" y2="70.33" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="19.61" y1="64.21" x2="12.30" y2="60.95" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="32.45" y1="61.00" x2="16.86" y2="52.00" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="28.81" y1="48.27" x2="22.33" y2="43.57" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="34.60" y1="41.12" x2="28.66" y2="35.76" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="41.12" y1="34.60" x2="35.76" y2="28.66" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="48.27" y1="28.81" x2="43.57" y2="22.33" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="61.00" y1="32.45" x2="52.00" y2="16.86" stroke="currentColor" stroke-width="2.4" stroke-opacity="1" stroke-linecap="round"/><line x1="64.21" y1="19.61" x2="60.95" y2="12.30" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="72.81" y1="16.31" x2="70.33" y2="8.70" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="81.70" y1="13.92" x2="80.04" y2="6.10" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/><line x1="90.80" y1="12.48" x2="89.97" y2="4.53" stroke="currentColor" stroke-width="1" stroke-opacity=".45" stroke-linecap="round"/>
+          <g id="hand">
+            <line x1="100" y1="36" x2="100" y2="14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+            <circle cx="100" cy="100" r="3.2" fill="currentColor"/>
+          </g>
+        </svg>
+        <div class="read">
+          <div class="lamp"><b id="state">IDLE</b><span id="count">LAP 00</span></div>
+          <p class="time" id="time"><span id="digits">00:00.00</span></p>
+          <p class="lapnow" id="lapnow">LAP 00:00.00</p>
+        </div>
+      </div>
+    </section>
+    <div class="row">
+      <button class="go" type="button" id="go" aria-pressed="false">Start</button>
+      <button class="side" type="button" id="lap" disabled>Lap</button>
+      <button class="side" type="button" id="reset" disabled>Reset</button>
+    </div>
+    <div class="tapehead"><span>#</span><span>LAP</span><span>SPLIT</span><span></span></div>
+    <ol class="laps" id="laps"></ol>
+    <p class="hint">Space starts or stops. L marks a lap. R resets when stopped. NO. 27 / 33</p>
+    <p class="sr" id="live" aria-live="polite"></p>
+  </main>
+<script>
+(function () {
+  var KEY = "nftz-stopwatching-27";
+  var CAP = 359999990;
+  var JOKE = 0;
+  var base = 0;
+  var running = false;
+  var startedAt = 0;
+  var lapMark = 0;
+  var laps = [];
+  var frame = 0;
+  var beat = 0;
+  var lapStamp = "";
+  var clock = function () { return Date.now(); };
+  var SELF = /(?:\?|&)selftest=1(?:&|$)/.test(location.search);
+  var slab = document.getElementById("slab");
+  var digits = document.getElementById("digits");
+  var timeEl = document.getElementById("time");
+  var stateEl = document.getElementById("state");
+  var countEl = document.getElementById("count");
+  var lapnow = document.getElementById("lapnow");
+  var hand = document.getElementById("hand");
+  var go = document.getElementById("go");
+  var lapBtn = document.getElementById("lap");
+  var resetBtn = document.getElementById("reset");
+  var list = document.getElementById("laps");
+  var live = document.getElementById("live");
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function fmt(ms) {
+    if (ms < 0) ms = 0;
+    if (ms > CAP) ms = CAP;
+    var cs = Math.floor(ms / 10) % 100;
+    var sec = Math.floor(ms / 1000) % 60;
+    var min = Math.floor(ms / 60000) % 60;
+    var hr = Math.floor(ms / 3600000);
+    var body = pad(min) + ":" + pad(sec) + "." + pad(cs);
+    if (hr > 0) return pad(hr) + ":" + body;
+    return body;
+  }
+  function elapsedNow() {
+    var ms = base;
+    if (running) ms += clock() - startedAt;
+    return ms;
+  }
+  function total() {
+    var ms = elapsedNow();
+    if (ms < 0) ms = 0;
+    if (ms > CAP) ms = CAP;
+    return ms;
+  }
+  function say(text) { live.textContent = text; }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        base: base,
+        running: running,
+        startedAt: running ? startedAt : 0,
+        lapMark: lapMark,
+        laps: laps
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    var raw = null;
+    try { raw = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { raw = null; }
+    if (!raw || typeof raw !== "object") return;
+    var b = Number(raw.base);
+    var mark = Number(raw.lapMark);
+    if (!(b >= 0)) b = 0;
+    if (b > CAP) b = CAP;
+    if (!(mark >= 0) || mark > b) mark = 0;
+    base = b;
+    lapMark = mark;
+    running = !!raw.running && b < CAP;
+    startedAt = Number(raw.startedAt) || 0;
+    if (running && !(startedAt > 0)) running = false;
+    laps = [];
+    if (Array.isArray(raw.laps)) {
+      var rows = raw.laps;
+      if (rows.length > 500) rows = rows.slice(rows.length - 500);
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        if (!row) continue;
+        var lap = Number(row.lap);
+        var split = Number(row.split);
+        if (!(lap >= 10) || !(split >= lap)) continue;
+        laps.push({ lap: Math.round(lap), split: Math.round(split) });
+      }
+    }
+  }
+  function renderLaps() {
+    if (!laps.length) {
+      list.innerHTML = "<li class='muted'>No laps yet</li>";
+      return;
+    }
+    var bi = -1;
+    var bv = 0;
+    if (laps.length >= 2) {
+      for (var i = 0; i < laps.length; i++) {
+        if (bi < 0 || laps[i].lap < bv) { bi = i; bv = laps[i].lap; }
+      }
+    }
+    var html = "";
+    for (var j = laps.length - 1; j >= 0; j--) {
+      var best = j === bi;
+      html += "<li" + (best ? " class='best'" : "") + "><span>#" + (j + 1) + "</span><span>" + fmt(laps[j].lap) + "</span><span>" + fmt(laps[j].split) + "</span><em>" + (best ? "BEST" : "") + "</em></li>";
+    }
+    list.innerHTML = html;
+  }
+  function paint() {
+    if (running && elapsedNow() >= CAP) {
+      base = CAP;
+      running = false;
+      startedAt = 0;
+      save();
+    }
+    var ms = total();
+    var idleJoke = JOKE && !running && base === 0 && laps.length === 0;
+    if (idleJoke) {
+      digits.textContent = "STOP\nWATCHING";
+      timeEl.classList.add("joke");
+      timeEl.classList.remove("long");
+    } else {
+      digits.textContent = fmt(ms);
+      timeEl.classList.remove("joke");
+      timeEl.classList.toggle("long", ms >= 3600000);
+    }
+    var open = ms - lapMark;
+    if (open < 0) open = 0;
+    lapnow.textContent = "LAP " + fmt(open);
+    stateEl.textContent = running ? "RUN" : (base > 0 || laps.length ? "HOLD" : "IDLE");
+    countEl.textContent = "LAP " + (laps.length < 100 ? pad(laps.length) : String(laps.length));
+    var deg = Math.round(((ms % 1000) / 1000) * 360) % 360;
+    hand.setAttribute("transform", "rotate(" + deg + " 100 100)");
+    go.textContent = running ? "Stop" : "Start";
+    go.disabled = !running && base >= CAP;
+    go.setAttribute("aria-pressed", running ? "true" : "false");
+    lapBtn.disabled = !running;
+    resetBtn.disabled = running || (base === 0 && laps.length === 0);
+    slab.classList.toggle("run", running);
+    var stamp = laps.length + ":" + (laps.length ? laps[laps.length - 1].split : 0);
+    if (stamp !== lapStamp) {
+      lapStamp = stamp;
+      renderLaps();
+    }
+  }
+  function kick() {
+    if (!running) return;
+    if (!frame) frame = requestAnimationFrame(loop);
+    if (!beat) {
+      beat = setInterval(function () {
+        if (!running) { haltLoop(); return; }
+        paint();
+      }, 80);
+    }
+  }
+  function loop() {
+    paint();
+    if (running) frame = requestAnimationFrame(loop);
+    else frame = 0;
+  }
+  function haltLoop() {
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    if (beat) clearInterval(beat);
+    beat = 0;
+  }
+  function start() {
+    if (running || base >= CAP) return;
+    running = true;
+    startedAt = clock();
+    save();
+    paint();
+    kick();
+    say("Running");
+  }
+  function stop() {
+    if (!running) return;
+    base = total();
+    running = false;
+    startedAt = 0;
+    haltLoop();
+    save();
+    paint();
+    say("Stopped");
+  }
+  function toggle() {
+    if (running) stop();
+    else start();
+  }
+  function markLap() {
+    if (!running) return;
+    var ms = total();
+    var lap = ms - lapMark;
+    if (lap < 10) return;
+    laps.push({ lap: Math.round(lap), split: Math.round(ms) });
+    if (laps.length > 500) laps = laps.slice(laps.length - 500);
+    lapMark = ms;
+    save();
+    paint();
+    say("Lap " + laps.length);
+  }
+  function reset() {
+    if (running) return;
+    if (base === 0 && laps.length === 0) return;
+    base = 0;
+    lapMark = 0;
+    laps = [];
+    startedAt = 0;
+    save();
+    paint();
+    say("Reset");
+  }
+  function fresh() {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    base = 0;
+    running = false;
+    startedAt = 0;
+    lapMark = 0;
+    laps = [];
+    lapStamp = "";
+    haltLoop();
+  }
+  go.addEventListener("click", toggle);
+  lapBtn.addEventListener("click", markLap);
+  resetBtn.addEventListener("click", reset);
+  document.addEventListener("keydown", function (e) {
+    if (e.repeat) return;
+    var tag = e.target && e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.code === "Space") {
+      if (tag === "BUTTON") return;
+      e.preventDefault();
+      toggle();
+    } else if (e.code === "KeyL") {
+      e.preventDefault();
+      markLap();
+    } else if (e.code === "KeyR") {
+      e.preventDefault();
+      reset();
+    }
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      haltLoop();
+      save();
+    } else {
+      paint();
+      kick();
+    }
+  });
+  window.addEventListener("pagehide", save);
+  load();
+  paint();
+  kick();
+
+  function runSelfTest() {
+    try {
+      var t = 1700000000000;
+      clock = function () { return t; };
+      fresh();
+      paint();
+      if (JOKE) {
+        if (digits.textContent !== "STOP\nWATCHING") throw new Error("joke idle");
+      } else if (digits.textContent !== "00:00.00") throw new Error("idle " + digits.textContent);
+      if (go.textContent !== "Start" || !lapBtn.disabled || !resetBtn.disabled) throw new Error("idle controls");
+      go.click();
+      if (!running || go.textContent !== "Stop" || lapBtn.disabled) throw new Error("not running");
+      t += 1500;
+      paint();
+      if (digits.textContent !== "00:01.50") throw new Error("1.50 " + digits.textContent);
+      if (hand.getAttribute("transform") !== "rotate(180 100 100)") throw new Error("hand " + hand.getAttribute("transform"));
+      lapBtn.click();
+      if (laps.length !== 1 || laps[0].lap !== 1500 || laps[0].split !== 1500) throw new Error("lap1");
+      t += 2500;
+      paint();
+      if (digits.textContent !== "00:04.00") throw new Error("4.00 " + digits.textContent);
+      if (lapnow.textContent !== "LAP 00:02.50") throw new Error("open " + lapnow.textContent);
+      document.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyL", bubbles: true }));
+      if (laps.length !== 2 || laps[1].lap !== 2500) throw new Error("lap2");
+      if (!list.querySelector(".best")) throw new Error("no best");
+      document.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyR", bubbles: true }));
+      if (!running || total() < 4000) throw new Error("reset while running");
+      go.click();
+      var held = digits.textContent;
+      t += 5000;
+      paint();
+      if (running || digits.textContent !== held) throw new Error("crept");
+      save();
+      base = 3;
+      laps = [];
+      load();
+      paint();
+      if (digits.textContent !== "00:04.00" || laps.length !== 2) throw new Error("reload " + digits.textContent + " " + laps.length);
+      go.click();
+      t += 1000;
+      paint();
+      if (digits.textContent !== "00:05.00") throw new Error("resume " + digits.textContent);
+      document.dispatchEvent(new KeyboardEvent("keydown", { code: "Space", bubbles: true }));
+      if (running) throw new Error("space");
+      resetBtn.click();
+      paint();
+      var idle = JOKE ? "STOP\nWATCHING" : "00:00.00";
+      if (digits.textContent !== idle || laps.length !== 0 || base !== 0) throw new Error("reset face");
+      fresh();
+      base = CAP - 50;
+      go.click();
+      t += 200;
+      paint();
+      if (running || total() !== CAP || digits.textContent !== "99:59:59.99") throw new Error("cap " + digits.textContent + " " + total());
+      document.documentElement.dataset.selftest = "ok";
+    } catch (err) {
+      document.documentElement.dataset.selftest = "fail " + (err && err.message ? err.message : err);
+    } finally {
+      try { localStorage.removeItem(KEY); } catch (e2) {}
+    }
+  }
+  if (SELF) runSelfTest();
+})();
+</script>
+</body>
+</html>
